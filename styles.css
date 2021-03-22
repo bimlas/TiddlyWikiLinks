@@ -490,7 +490,7 @@ Rich links
     background-color: #DBA512;    
 }.tc-richlink-link-target {
     vertical-align: middle;
-}.tc-richlink-link-target svg {
+}.tc-richlink a svg {
     width: 1em;
     height: 1em;
 }.tc-richlink-topic {

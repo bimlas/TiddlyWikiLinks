@@ -799,7 +799,7 @@ tc-richlink-contributor-name {
     vertical-align: middle;
 }
 
-.tc-richlink-link-target svg {
+.tc-richlink a svg {
     width: 1em;
     height: 1em;
 }
@@ -1134,7 +1134,12 @@ Parameters:
 </pre>
 </div>
 <div title="$:/_Templates/RichLink/Link">
-<pre>&lt;!--
+<pre>\define download-link-template()
+title: $(url)$
+tags: $:/tags/Link
+url: $(url)$
+\end
+&lt;!--
 
 Render a rich link to the details page relating to a particular link
 
@@ -1148,6 +1153,7 @@ Parameters:
 &lt;$vars url={{{ [&lt;link-title&gt;get[url]] }}}&gt;
 &lt;a href={{{ [&lt;link-title&gt;get[url-hash]addprefix[urls/]addprefix&lt;tv-path-to-root&gt;] }}} class=&quot;tc-richlink-link-info&quot; title=&quot;Show link info&quot;&gt;&lt;$text text=&lt;&lt;url&gt;&gt;/&gt;&lt;/a&gt;
 &lt;a href=&lt;&lt;url&gt;&gt; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot; class=&quot;tc-richlink-link-target&quot; title=&lt;&lt;url&gt;&gt;&gt;{{$:/core/images/open-window}}&lt;/a&gt;
+&lt;a href={{{ [&lt;download-link-template&gt;encodeuricomponent[]addprefix[data:text/plain,]] }}} download={{{ [&lt;link-title&gt;get[url-hash]addprefix[link-]addsuffix[.tid]] }}} class=&quot;tc-richlink-link-download&quot; title=&quot;Download this link as a tiddler to add to your own TiddlyWiki&quot;&gt;{{$:/core/images/download-button}}&lt;/a&gt;
 &lt;/$vars&gt;
 &lt;/div&gt;
 </pre>
@@ -11541,6 +11547,8 @@ Your wiki should also have the following system tiddlers:
 <pre>!! Welcome to the ~TiddlyWiki Links Aggregator
 
 This site is a collection of links to useful and interesting ~TiddlyWiki material curated by our team of community editors.
+
+''NEW'': You can now download links as .tid files to add to your own bookmarking files
 
 !! Statistics
 
