@@ -1100,6 +1100,13 @@ tc-richlink-contributor-name {
 Details
 */
 
+.tc-contributor-info {
+    border: 1px solid &lt;&lt;colour base-primary&gt;&gt;;
+    border-radius: 0.25em;
+    background-color: #fff8f8;
+    padding: 1em;
+}
+
 .tc-list-horizontal {
     list-style: none;
     padding: 0;
@@ -1191,12 +1198,11 @@ Parameters:
 &lt;$vars currentTiddler={{{ [tag[$:/tags/LinkSource]name&lt;contributor&gt;] }}}&gt;
 &lt;h1&gt;{{$:/_Templates/RichLink/Contributor}}&lt;/h1&gt;
 &lt;p&gt;
-Link source: &lt;a href={{!!url}} target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;&lt;$text text={{!!url}}/&gt;&lt;/a&gt;
+Publishing &lt;$count filter=&quot;[tag[$:/tags/Link]origin&lt;contributor&gt;]&quot;/&gt; links from: &lt;a href={{!!url}} target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot;&gt;&lt;$text text={{!!url}}/&gt;&lt;/a&gt;
 &lt;/p&gt;
-&lt;p&gt;
+&lt;p class=&quot;tc-contributor-info&quot;&gt;
 &lt;$transclude mode=&quot;inline&quot;/&gt;
 &lt;/p&gt;
-
 &lt;ul class=&quot;tc-list-vertical&quot;&gt;
 &lt;$list filter=&quot;[tag[$:/tags/Link]field:origin&lt;contributor&gt;!sort[modified]]&quot; variable=&quot;link-title&quot;&gt;
 &lt;li&gt;
@@ -12227,9 +12233,7 @@ Your wiki should also have the following system tiddlers:
 <div tags="$:/tags/Page" title="Contributors">
 <pre>&lt;ul class=&quot;tc-list-vertical&quot;&gt;
 &lt;$list filter=&quot;[tag[$:/tags/Link]each[origin]get[origin]sort[]]&quot; variable=&quot;contributor&quot;&gt;
-&lt;$set name=&quot;source&quot; value={{{ [tag[$:/tags/LinkSource]field:name&lt;contributor&gt;] }}}&gt;
-&lt;li&gt;{{$:/_Templates/RichLink/Contributor}}&lt;/li&gt;
-&lt;/$set&gt;
+&lt;li&gt;{{$:/_Templates/RichLink/Contributor}} (&lt;$count filter=&quot;[tag[$:/tags/Link]origin&lt;contributor&gt;]&quot;/&gt; links)&lt;/li&gt;
 &lt;/$list&gt;
 &lt;/ul&gt;
 </pre>
