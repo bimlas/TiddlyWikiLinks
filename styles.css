@@ -484,6 +484,7 @@ Rich links
 }.tc-richlink-link {
     
 }.tc-richlink-link-info {
+    word-break: break-all;
 }.tc-richlink-link-target {
     text-decoration: none;    
 }.tc-richlink-link-target:hover {
