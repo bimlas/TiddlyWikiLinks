@@ -12786,7 +12786,7 @@ The most recently updated links.
 <pre>&lt;ul class=&quot;tc-list-vertical&quot;&gt;
 &lt;$list filter=&quot;[tag[$:/tags/Link]each[url]sort[url]]&quot; variable=&quot;link-title&quot;&gt;
 &lt;$set name=&quot;url&quot; value={{{ [&lt;link-title&gt;get[url]] }}}&gt;
-&lt;li&gt;{{$:/_Templates/RichLink/Link}} (&lt;$count filter=&quot;[tag[$:/tags/Link]field:url&lt;url&gt;]&quot;/&gt; links)&lt;/li&gt;
+&lt;li&gt;{{$:/_Templates/RichLink/Link}}&lt;/li&gt;
 &lt;/$set&gt;
 &lt;/$list&gt;
 &lt;/ul&gt;
