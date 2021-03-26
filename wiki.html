@@ -148,6 +148,8 @@ Error message and password prompt
 
 <li>$:/_Palette</li>
 
+<li>$:/_Scripts/app.js</li>
+
 <li>$:/_Styles</li>
 
 <li>$:/_Templates/Components/LinkPanel</li>
@@ -183,6 +185,8 @@ Error message and password prompt
 <li>$:/_Templates/Section/Footer</li>
 
 <li>$:/_Templates/Section/Menu</li>
+
+<li>$:/_Templates/Section/Search</li>
 
 <li>$:/config/avatars/abesamma</li>
 
@@ -1455,6 +1459,300 @@ wikilist-droplink-dragover: rgba(255,192,192,0.5)
 wikilist-button-background: #acacac
 wikilist-button-foreground: #000</pre>
 </div>
+<div module-type="library" title="$:/_Scripts/app.js" type="application/javascript">
+<pre>/*\
+title: $:/_Scripts/app.js
+type: application/javascript
+module-type: library
+
+JavaScript for links.tiddlywiki.com static rendering
+
+\*/
+(function(){
+
+/*jslint node: true, browser: true */
+/*global $tw: false */
+&quot;use strict&quot;;
+
+var xhr = function() {
+	var xhr = new XMLHttpRequest();
+	return function(method, url, callback ) {
+		xhr.onreadystatechange = function() {
+			if(xhr.readyState === 4) {
+				callback(xhr.responseText);
+			}
+		};
+		xhr.open(method, url);
+		xhr.send();
+	};
+}();
+
+window.addEventListener('DOMContentLoaded', function(event) {
+
+	var inputSearch = document.getElementById('tid-page-search-input'),
+		outputSearch = document.getElementById('tid-page-search-output');	
+	inputSearch.addEventListener('focus', function(event) {
+		if(outputSearch.hasChildNodes()) {
+			showSearchResults();
+		}
+		// Prefetch the search data if the user focuses the search control
+		getSearchData(function(searchData) {});
+	});
+	inputSearch.addEventListener('input', function(event) {
+		getSearchData(function(searchData) {
+			performSearch(inputSearch.value,searchData);
+		});
+	});
+	document.addEventListener('click', function(event) {
+		if(!outputSearch.contains(event.target) &amp;&amp; event.target !== inputSearch) {
+			hideSearchResults();
+		}
+	});
+
+	var searchData;
+	function getSearchData(callback) {
+		if(searchData) {
+			callback(searchData);
+		} else {
+			xhr('get', '/tiddlers.json', function(data) {
+				searchData = JSON.parse(data);
+				callback(searchData);
+			});
+		}
+	}
+
+	function performSearch(string,searchData) {
+		var matches = findMatches(string,searchData);
+		clearSearchResults();
+		if(matches) {
+			showSearchResults();
+			outputSearch.appendChild(dm(&quot;p&quot;,{text: &quot;WARNING: This is currenly a dumb, literal text search&quot;}));
+			if(matches.topicMatches.length &gt; 0) {
+				//  Matching topics
+				outputSearch.appendChild(dm(&quot;h2&quot;,{text: &quot;Matching topics&quot;}));
+				for(var index=0; index&lt;matches.topicMatches.length; index++) {
+					outputSearch.appendChild(dm(&quot;div&quot;,{
+						&quot;class&quot;: &quot;tc-richlink tc-richlink-topic&quot;,
+						children: [
+							dm(&quot;a&quot;,{
+								attributes: {href: &quot;/topics/&quot; + matches.topicMatches[index]},
+								text: matches.topicMatches[index]
+							})
+						]
+					}));
+				}
+			}
+			if(matches.descriptionMatches.length &gt; 0) {
+				// Matching Descriptions
+				outputSearch.appendChild(dm(&quot;h2&quot;,{text: &quot;Matching descriptions&quot;}));
+				for(var index=0; index&lt;matches.descriptionMatches.length; index++) {
+					outputSearch.appendChild(dm(&quot;div&quot;,{
+						&quot;class&quot;: &quot;tc-link-panel&quot;,
+						children: [
+							dm(&quot;div&quot;,{
+								&quot;class&quot;: &quot;tc-link-panel-heading&quot;,
+								children: [
+									dm(&quot;div&quot;,{
+										&quot;class&quot;: &quot;tc-richlink tc-richlink-url&quot;,
+										children: [
+											dm(&quot;a&quot;,{
+												&quot;class&quot;: &quot;tc-richlink-link-info&quot;,
+												attributes: {href: &quot;/urls/&quot; + matches.descriptionMatches[index][&quot;url-hash&quot;]},
+												text: matches.descriptionMatches[index].url
+											})
+										]
+									})
+								]
+							}),
+							dm(&quot;div&quot;,{
+								&quot;class&quot;: &quot;tc-link-panel-body&quot;,
+								text: matches.descriptionMatches[index].text
+							})
+						]
+					}));
+				}
+			}
+			if(matches.urlMatches.length &gt; 0) {
+				// Matching URLs
+				outputSearch.appendChild(dm(&quot;h2&quot;,{text: &quot;Matching URLs&quot;}));
+				for(var index=0; index&lt;matches.urlMatches.length; index++) {
+					outputSearch.appendChild(dm(&quot;div&quot;,{
+						&quot;class&quot;: &quot;tc-richlink tc-richlink-url&quot;,
+						children: [
+							dm(&quot;a&quot;,{
+								&quot;class&quot;: &quot;tc-richlink-link-info&quot;,
+								attributes: {
+									href: &quot;/urls/&quot; + matches.urlMatches[index][&quot;url-hash&quot;]
+								},
+								text: matches.urlMatches[index].url
+							})
+						]
+					}));
+				}
+			}
+			if(matches.topicMatches.length === 0 &amp;&amp; matches.descriptionMatches.length === 0 &amp;&amp; matches.urlMatches.length === 0) {
+				// Message if there are no matches
+				outputSearch.appendChild(dm(&quot;h2&quot;,{text: &quot;No matches&quot;}));
+			}
+		} else {
+			hideSearchResults();
+		}
+	}
+
+	function showSearchResults() {
+		outputSearch.removeAttribute(&quot;hidden&quot;);
+	}
+
+	function hideSearchResults() {
+		outputSearch.setAttribute(&quot;hidden&quot;,&quot;hidden&quot;);
+	}
+
+	function clearSearchResults() {
+		while(outputSearch.hasChildNodes()) {
+			outputSearch.removeChild(outputSearch.firstChild);
+		}
+	}
+
+	function findMatches(string,searchData) {
+		var result = {
+			topicMatches: [],
+			descriptionMatches: [],
+			urlMatches: [],
+			urlHashes: {}
+		};
+		// Clean the string
+		string = string.toLowerCase().trim();
+		// Check for emtpy search string
+		if(!string) {
+			return null;
+		}
+		// Find matches
+		for(var index = 0; index&lt;searchData.length; index++) {
+			var tiddler = searchData[index],
+				tags = parseStringArray(tiddler.tags || &quot;&quot;);
+			if(tags.indexOf(&quot;$:/tags/Link&quot;) !== -1) {
+				// Check for topic match
+				for(var tagIndex=0; tagIndex&lt;tags.length; tagIndex++) {
+					var tag = tags[tagIndex].toLowerCase();
+					if(tag.substring(0,3) !== &quot;$:/&quot;) {
+						if(tag.indexOf(string) !== -1 &amp;&amp; result.topicMatches.indexOf(tag) === -1) {
+							result.topicMatches.push(tag);
+						}
+					}
+				}
+				// Check for a description match
+				if(tiddler.text.toLowerCase().indexOf(string) !== -1) {
+					result.descriptionMatches.push(tiddler);
+				}
+				// Check for URL match
+				if(tiddler.url.toLowerCase().indexOf(string) !== -1 &amp;&amp; !result.urlHashes[tiddler[&quot;url-hash&quot;]]) {
+					result.urlHashes[tiddler[&quot;url-hash&quot;]] = true;
+					result.urlMatches.push({
+						url: tiddler.url,
+						&quot;url-hash&quot;: tiddler[&quot;url-hash&quot;]
+					});
+				}
+			}
+		}
+		result.topicMatches = result.topicMatches.sort();
+		result.urlMatches = result.urlMatches.sort(function(a,b) {
+			if(a.url &lt; b.url) {
+				return -1
+			} else if(a.url &gt; b.url) {
+				return +1;
+			} else {
+				return 0;
+			}
+		});
+		return result;
+	}
+
+	// Parse a string array from a bracketted list. For example &quot;OneTiddler [[Another Tiddler]] LastOne&quot;
+	function parseStringArray(value, allowDuplicate) {
+		if(typeof value === &quot;string&quot;) {
+			var memberRegExp = /(?:^|[^\S\xA0])(?:\[\[(.*?)\]\])(?=[^\S\xA0]|$)|([\S\xA0]+)/mg,
+				results = [], names = {},
+				match;
+			do {
+				match = memberRegExp.exec(value);
+				if(match) {
+					var item = match[1] || match[2];
+					if(item !== undefined &amp;&amp; (!Object.prototype.hasOwnProperty(names,item) || allowDuplicate)) {
+						results.push(item);
+						names[item] = true;
+					}
+				}
+			} while(match);
+			return results;
+		} else if(isArray(value)) {
+			return value;
+		} else {
+			return null;
+		}
+	}
+
+	function isArray(value) {
+		return Object.prototype.toString.call(value) == &quot;[object Array]&quot;;
+	}
+
+	/*
+	Helper for making DOM elements
+		tag: tag name
+		options: see below
+	Options include:
+		namespace: defaults to http://www.w3.org/1999/xhtml
+		attributes: hashmap of attribute values
+		style: hashmap of styles
+		text: text to add as a child node
+		children: array of further child nodes
+		innerHTML: optional HTML for element
+		class: class name(s)
+		document: defaults to current document
+	*/
+	function dm(tag,options) {
+		var doc = options.document || document;
+		var element = doc.createElementNS(options.namespace || &quot;http://www.w3.org/1999/xhtml&quot;,tag);
+		if(options[&quot;class&quot;]) {
+			element.className = options[&quot;class&quot;];
+		}
+		if(options.text) {
+			element.appendChild(doc.createTextNode(options.text));
+		}
+		forEachKey(options.children,function(child) {
+			element.appendChild(child);
+		});
+		if(options.innerHTML) {
+			element.innerHTML = options.innerHTML;
+		}
+		forEachKey(options.attributes,function(attribute,name) {
+			element.setAttribute(name,attribute);
+		});
+		forEachKey(options.style,function(value,name) {
+			element.style[name] = value;
+		});
+		return element;
+	};
+
+	function forEachKey(object,callback) {
+		if(object) {
+			var keys = Object.keys(object);
+			for (var f=0, length=keys.length; f&lt;length; f++) {
+				var key = keys[f];
+				var next = callback(object[key],key,object);
+				if(next === false) {
+					break;
+				}
+			}
+		}
+	}
+
+});
+
+
+	
+})();
+	</pre>
+</div>
 <div title="$:/_Styles">
 <pre>\import [[$:/core/ui/PageMacros]] [all[shadows+tiddlers]tag[$:/tags/Macro]!has[draft.of]]
 \rules only filteredtranscludeinline transcludeinline macrodef macrocallinline macrocallblock
@@ -1569,13 +1867,6 @@ input:not([type]) {
 
 input[type=&quot;checkbox&quot;] {
   vertical-align: middle;
-}
-
-input[type=&quot;search&quot;]::-webkit-search-decoration,
-input[type=&quot;search&quot;]::-webkit-search-cancel-button,
-input[type=&quot;search&quot;]::-webkit-search-results-button,
-input[type=&quot;search&quot;]::-webkit-search-results-decoration {
-	-webkit-appearance:none;
 }
 
 kbd {
@@ -1720,7 +2011,6 @@ Rich links
 */
 
 .tc-richlink {
-    display: inline-block;
 }
 
 .tc-richlink a {
@@ -1766,6 +2056,7 @@ tc-richlink-contributor-name {
 }
 
 .tc-richlink-topic {
+    display: inline-block;
     font-size: 0.8em;
 }
 
@@ -1812,6 +2103,7 @@ Details
 .tc-link-panel {
     border: 1px solid &lt;&lt;colour muted-foreground&gt;&gt;;
     border-radius: 0.25em;
+	margin: 1em 0 1em 0;
 }
 
 .tc-link-panel &gt; .tc-link-panel-heading {
@@ -1826,7 +2118,30 @@ Details
 
 .tc-link-panel &gt; .tc-link-panel-body {
     padding: 0.5em;
-}</pre>
+}
+
+/*
+Search
+*/
+
+.tc-section-search {
+	position: relative;
+	text-align: right;
+	padding: 0.25em 0.25em 0.25em 0;
+}
+
+#tid-page-search-output {
+	text-align: left;
+	max-width: calc(100% - 2em);
+	margin: 0 1em 0 1em;
+	position: absolute;
+	border: 1px solid black;
+	background: white;
+	padding: 0 1em 1em 1em;
+	border-radius: 0.5em;
+	box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
+}
+</pre>
 </div>
 <div title="$:/_Templates/Components/LinkPanel">
 <pre>&lt;!--
@@ -2000,6 +2315,7 @@ Links in this topic:
 `&lt;$list filter=&quot;[tag[$:/tags/PageSection]]&quot; variable=&quot;section&quot;&gt;&lt;$view tiddler=&lt;&lt;section&gt;&gt; format=&quot;htmlwikified&quot; mode=&quot;inline&quot;/&gt;&lt;/$list&gt;`
 &lt;/div&gt;
 &lt;/body&gt;
+&lt;script src=&quot;`&lt;$text text=&lt;&lt;tv-path-to-root&gt;&gt;/&gt;`app.js&quot;&gt;&lt;/script&gt;
 &lt;/html&gt;
 `
 </pre>
@@ -2193,6 +2509,13 @@ Join the development of [[TiddlyWikiLinks on GitHub|https://github.com/TiddlyWik
 &lt;/$list&gt;
 &lt;/ul&gt;
 &lt;/nav&gt;
+</pre>
+</div>
+<div tags="$:/tags/PageSection" title="$:/_Templates/Section/Search">
+<pre>&lt;aside class=&quot;tc-section-search&quot;&gt;
+&lt;input id=&quot;tid-page-search-input&quot; type=&quot;search&quot; placeholder=&quot;Search...&quot;/&gt;
+&lt;div id=&quot;tid-page-search-output&quot; hidden&gt;&lt;/div&gt;
+&lt;/aside&gt;
 </pre>
 </div>
 <div name="abesamma" tags="$:/tags/Avatar" title="$:/config/avatars/abesamma" type="image/x-icon">
@@ -13882,7 +14205,7 @@ About
 <div list="Links Topics Contributors HowToContribute" title="$:/tags/Page">
 <pre></pre>
 </div>
-<div list="$:/_Templates/Section/Branding $:/_Templates/Section/Menu $:/_Templates/Section/Content $:/_Templates/Section/Footer" title="$:/tags/PageSection">
+<div list="$:/_Templates/Section/Branding $:/_Templates/Section/Search $:/_Templates/Section/Menu $:/_Templates/Section/Content $:/_Templates/Section/Footer" title="$:/tags/PageSection">
 <pre></pre>
 </div>
 <div author="JeremyRuston" core-version="&gt;=5.0.0" dependents="$:/themes/tiddlywiki/vanilla" description="Emphasises individual tiddlers" name="Snow White" plugin-priority="0" plugin-type="theme" title="$:/themes/tiddlywiki/snowwhite" type="application/json" version="5.1.24-prerelease">
@@ -14041,7 +14364,9 @@ Your wiki should also have the following system tiddlers:
 </pre>
 </div>
 <div tags="$:/tags/Page" title="Contributors">
-<pre>&lt;ul class=&quot;tc-list-vertical&quot;&gt;
+<pre>Number of contributors: &lt;a href={{{ [[./pages/contributors]addprefix&lt;tv-path-to-root&gt;] }}}&gt;contributors&lt;/a&gt;: &lt;$count filter=&quot;[tag[$:/tags/LinkSource]]&quot;/&gt;
+
+&lt;ul class=&quot;tc-list-vertical&quot;&gt;
 &lt;$list filter=&quot;[tag[$:/tags/Link]each[origin]get[origin]sort[]]&quot; variable=&quot;contributor&quot;&gt;
 &lt;li&gt;{{$:/_Templates/RichLink/Contributor}} (&lt;$count filter=&quot;[tag[$:/tags/Link]origin&lt;contributor&gt;]&quot;/&gt; links)&lt;/li&gt;
 &lt;/$list&gt;
@@ -14054,16 +14379,6 @@ Your wiki should also have the following system tiddlers:
 This site is a collection of links to useful and interesting ~TiddlyWiki material curated by our team of community editors.
 
 ''NEW'': You can now download links as .tid files to add to your own bookmarking files
-
-!! Statistics
-
-Number of &lt;a href={{{ [[./pages/contributors]addprefix&lt;tv-path-to-root&gt;] }}}&gt;contributors&lt;/a&gt;: &lt;$count filter=&quot;[tag[$:/tags/LinkSource]]&quot;/&gt;
-
-Number of &lt;a href={{{ [[./pages/links]addprefix&lt;tv-path-to-root&gt;] }}}&gt;links&lt;/a&gt;: &lt;$count filter=&quot;[tag[$:/tags/Link]]&quot;/&gt;
-
-Number of unique &lt;a href={{{ [[./pages/links]addprefix&lt;tv-path-to-root&gt;] }}}&gt;URLs&lt;/a&gt;: &lt;$count filter=&quot;[tag[$:/tags/Link]each[url]]&quot;/&gt;
-
-Number of &lt;a href={{{ [[./pages/topics]addprefix&lt;tv-path-to-root&gt;] }}}&gt;topics&lt;/a&gt;: &lt;$count filter=&quot;[tag[$:/tags/Link]tags[]] -[[$:/tags/Link]]&quot;/&gt;
 
 !! Recent Updates
 
@@ -14086,7 +14401,11 @@ The most recently updated links.
 </pre>
 </div>
 <div tags="$:/tags/Page" title="Links">
-<pre>&lt;ul class=&quot;tc-list-vertical&quot;&gt;
+<pre>Number of &lt;a href={{{ [[./pages/links]addprefix&lt;tv-path-to-root&gt;] }}}&gt;links&lt;/a&gt;: &lt;$count filter=&quot;[tag[$:/tags/Link]]&quot;/&gt;
+
+Number of unique &lt;a href={{{ [[./pages/links]addprefix&lt;tv-path-to-root&gt;] }}}&gt;URLs&lt;/a&gt;: &lt;$count filter=&quot;[tag[$:/tags/Link]each[url]]&quot;/&gt;
+
+&lt;ul class=&quot;tc-list-vertical&quot;&gt;
 &lt;$list filter=&quot;[tag[$:/tags/Link]each[url]sort[url]]&quot; variable=&quot;link-title&quot;&gt;
 &lt;$set name=&quot;url&quot; value={{{ [&lt;link-title&gt;get[url]] }}}&gt;
 &lt;li&gt;{{$:/_Templates/RichLink/Link}} (&lt;$count filter=&quot;[tag[$:/tags/Link]field:url&lt;url&gt;]&quot;/&gt; links)&lt;/li&gt;
@@ -14096,7 +14415,9 @@ The most recently updated links.
 </pre>
 </div>
 <div tags="$:/tags/Page" title="Topics">
-<pre>&lt;ul class=&quot;tc-list-vertical&quot;&gt;
+<pre>Number of &lt;a href={{{ [[./pages/topics]addprefix&lt;tv-path-to-root&gt;] }}}&gt;topics&lt;/a&gt;: &lt;$count filter=&quot;[tag[$:/tags/Link]tags[]] -[[$:/tags/Link]]&quot;/&gt;
+
+&lt;ul class=&quot;tc-list-vertical&quot;&gt;
 &lt;$list filter=&quot;[tag[$:/tags/Link]tags[]] -[[$:/tags/Link]] +[sort[]]&quot; variable=&quot;topic&quot;&gt;
 &lt;li&gt;{{$:/_Templates/RichLink/Topic}}&lt;/li&gt;
 &lt;/$list&gt;
